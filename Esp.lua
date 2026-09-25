@@ -13,17 +13,14 @@ local CYBER_COLORS = {
     Visible  = Color3.fromRGB(0, 255, 0),   -- Р—РµР»РµРЅС‹Р№ (РІРёРґРЅРѕ)
     Hidden   = Color3.fromRGB(255, 0, 0),   -- РљСЂР°СЃРЅС‹Р№ (Р·Р° СЃС‚РµРЅРѕР№)
     Default  = Color3.fromRGB(255, 255, 255),
-    SelfDot  = Color3.fromRGB(0, 100, 255),
 }
 
 local settings_tbl = {
     ESP_Enabled = true,
-    Box_Enabled = true,   -- РћС‚РґРµР»СЊРЅС‹Р№ С‚СѓРјР±Р»РµСЂ РґР»СЏ Р±РѕРєСЃРѕРІ
-    TeamCheck = false,
+    Box_Enabled = true,
     Skeleton = true,
-    ViewAngle = true,  -- Р›РёРЅРёСЏ РЅР°РїСЂР°РІР»РµРЅРёСЏ РІР·РіР»СЏРґР°
+    ViewAngle = true,
     Tracers = true,
-    Radar = true,
     WallColor_Enabled = true,
     Max_Distance = 1500,
 }
@@ -42,33 +39,6 @@ local function createDrawing(className, properties)
         obj[k] = v
     end
     return obj
-end
-
--- Р РђР”РђР  
-local radarRadius = 90
-local radarBackground = Drawing.new("Circle")
-radarBackground.Visible = false
-radarBackground.Radius = radarRadius
-radarBackground.Color = Color3.fromRGB(0, 0, 0)
-radarBackground.Transparency = 0.6
-radarBackground.Filled = true
-
-local radarSelfDot = Drawing.new("Circle")
-radarSelfDot.Visible = false
-radarSelfDot.Radius = 4
-radarSelfDot.Color = CYBER_COLORS.SelfDot
-radarSelfDot.Filled = true
-
-local radarDots = {}
-local function getRadarDot(index)
-    if not radarDots[index] then
-        local dot = Drawing.new("Circle")
-        dot.Visible = false
-        dot.Radius = 4.5
-        dot.Filled = true
-        radarDots[index] = dot
-    end
-    return radarDots[index]
 end
 
 local function addPlayerESP(player)
@@ -133,14 +103,6 @@ local function IsVisible(part)
     return hit and hit:IsDescendantOf(part.Parent)
 end
 
-local function IsTeammate(player)
-    if not settings_tbl.TeamCheck then return false end
-    if player == LocalPlayer then return true end
-    if player.Team and LocalPlayer.Team then return player.Team == LocalPlayer.Team end
-    if player.TeamColor and LocalPlayer.TeamColor then return player.TeamColor == LocalPlayer.TeamColor end
-    return false
-end
-
 ------------------------------------------------------------------------
 -- Р Р•РќР”Р•Р  Р›РЈРџ
 ------------------------------------------------------------------------
@@ -148,22 +110,7 @@ RunService.Heartbeat:Connect(function()
     local myChar = LocalPlayer.Character
     local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
     
-    -- Р—Р°С‰РёС‚Р° РѕС‚ Р±Р°РіР° РґРёСЃС‚Р°РЅС†РёРё, РµСЃР»Рё РїРµСЂСЃ РµС‰Рµ РЅРµ РїСЂРѕРіСЂСѓР·РёР»СЃСЏ
     if not myHrp then return end
-
-    local radarCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2 + 160)
-    radarBackground.Position = radarCenter
-    radarSelfDot.Position = radarCenter
-    
-    local radarActive = settings_tbl.Radar and settings_tbl.ESP_Enabled
-    radarBackground.Visible = radarActive
-    radarSelfDot.Visible = radarActive
-    
-    if not radarActive then
-        for _, dot in pairs(radarDots) do dot.Visible = false end
-    end
-
-    local dotIndex = 1
 
     for _, player in ipairs(Players:GetPlayers()) do 
         if player ~= LocalPlayer then
@@ -178,7 +125,7 @@ RunService.Heartbeat:Connect(function()
                 if settings_tbl.ESP_Enabled and char and hrp and hum and hum.Health > 0 then
                     local distance = (myHrp.Position - hrp.Position).Magnitude
                     
-                    if not IsTeammate(player) and distance <= settings_tbl.Max_Distance then
+                    if distance <= settings_tbl.Max_Distance then
                         local head = char:FindFirstChild("Head")
                         
                         if head then
@@ -188,20 +135,6 @@ RunService.Heartbeat:Connect(function()
                                     current_color = CYBER_COLORS.Visible
                                 else
                                     current_color = CYBER_COLORS.Hidden
-                                end
-                            end
-
-                            -- Р Р°РґР°СЂ РѕР±РЅРѕРІР»РµРЅРёРµ
-                            if radarActive then
-                                local relativePos = myHrp.CFrame:PointToObjectSpace(hrp.Position)
-                                local radarPos = radarCenter + Vector2.new(relativePos.X * 0.25, relativePos.Z * 0.25)
-                                
-                                if (radarPos - radarCenter).Magnitude < radarRadius then
-                                    local dot = getRadarDot(dotIndex)
-                                    dot.Visible = true
-                                    dot.Position = radarPos
-                                    dot.Color = current_color
-                                    dotIndex = dotIndex + 1
                                 end
                             end
 
@@ -216,7 +149,6 @@ RunService.Heartbeat:Connect(function()
                                 local width = (height / 2) * BOX_SCALE
                                 local boxPos = Vector2.new(rootScreenPos.X - width / 2, headScreenPos.Y)
 
-                                -- РџСЂРѕРІРµСЂРєР° РѕС‚РґРµР»СЊРЅРѕРіРѕ С‚СѓРјР±Р»РµСЂР° Р‘РѕРєСЃР°
                                 if settings_tbl.Box_Enabled then
                                     drawings.Box.Size = Vector2.new(width, height)
                                     drawings.Box.Position = boxPos
@@ -226,14 +158,12 @@ RunService.Heartbeat:Connect(function()
                                     drawings.Box.Visible = false
                                 end
                                 
-                                -- РўРµРєСЃС‚ РїСЂРёРІСЏР·Р°РЅ С‡С‘С‚РєРѕ Рє РІРµСЂС…СѓС€РєРµ Р±РѕРєСЃР° (Р°РєРєСѓСЂР°С‚РЅС‹Р№ РѕС‚СЃС‚СѓРї -35)
                                 local hpInt = math.floor(hum.Health)
                                 drawings.Info.Text = string.format("%s\n[%d HP] [%dm]", player.Name, hpInt, math.floor(distance))
                                 drawings.Info.Position = Vector2.new(boxPos.X + (width / 2), boxPos.Y - 35)
                                 drawings.Info.Color = current_color
                                 drawings.Info.Visible = true
                                 
-                                -- Р›РёРЅРёСЏ РЅР°РїСЂР°РІР»РµРЅРёСЏ РІР·РіР»СЏРґР°
                                 if settings_tbl.ViewAngle then
                                     local headPos = head.Position
                                     local lookVectorEnd = headPos + (head.CFrame.LookVector * 4)
@@ -252,7 +182,6 @@ RunService.Heartbeat:Connect(function()
                                     drawings.ViewAngleLine.Visible = false
                                 end
                                 
-                                -- РўСЂРµР№СЃРµСЂС‹
                                 if settings_tbl.Tracers then
                                     local vpSize = Camera.ViewportSize
                                     drawings.TracerLine.From = Vector2.new(vpSize.X / 2, vpSize.Y)
@@ -263,7 +192,6 @@ RunService.Heartbeat:Connect(function()
                                     drawings.TracerLine.Visible = false
                                 end
                                 
-                                -- РЎРєРµР»РµС‚ + Р“РѕР»РѕРІР°
                                 if settings_tbl.Skeleton then
                                     local function getJoint(name)
                                         local part = char:FindFirstChild(name)
@@ -328,10 +256,6 @@ RunService.Heartbeat:Connect(function()
             end
         end
     end
-    
-    for i = dotIndex, #radarDots do
-        radarDots[i].Visible = false
-    end
 end)
 
 ------------------------------------------------------------------------
@@ -357,7 +281,7 @@ local MainFrame = Instance.new("Frame")
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = CYBER_COLORS.DarkBg
 MainFrame.Position = UDim2.new(0.3, 0, 0.2, 0)
-MainFrame.Size = UDim2.new(0, 180, 0, 335)
+MainFrame.Size = UDim2.new(0, 180, 0, 260)
 MainFrame.BorderSizePixel = 2
 MainFrame.BorderColor3 = CYBER_COLORS.Cyan
 MainFrame.Active = true
@@ -396,19 +320,17 @@ local function createButton(name, posY, key)
     end)
 end
 
-createButton("ESP", 0.03, "ESP_Enabled")
-createButton("BOX", 0.12, "Box_Enabled")      -- РћС‚РґРµР»СЊРЅР°СЏ РєРЅРѕРїРєР° РґР»СЏ Р±РѕРєСЃРѕРІ
-createButton("TEAM CHECK", 0.21, "TeamCheck")
-createButton("SKELETON", 0.30, "Skeleton")
-createButton("VIEW ANGLE", 0.39, "ViewAngle")
-createButton("TRACERS", 0.48, "Tracers")
-createButton("RADAR", 0.57, "Radar")
-createButton("WALL COLOR", 0.66, "WallColor_Enabled")
+createButton("ESP", 0.04, "ESP_Enabled")
+createButton("BOX", 0.16, "Box_Enabled")
+createButton("SKELETON", 0.28, "Skeleton")
+createButton("VIEW ANGLE", 0.40, "ViewAngle")
+createButton("TRACERS", 0.52, "Tracers")
+createButton("WALL COLOR", 0.64, "WallColor_Enabled")
 
 local DistBox = Instance.new("TextBox")
 DistBox.Parent = MainFrame
 DistBox.Size = UDim2.new(0.9, 0, 0, 25)
-DistBox.Position = UDim2.new(0.05, 0, 0.78, 0)
+DistBox.Position = UDim2.new(0.05, 0, 0.77, 0)
 DistBox.Font = Enum.Font.RobotoMono
 DistBox.TextSize = 10
 DistBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
